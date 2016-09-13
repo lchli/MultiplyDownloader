@@ -256,33 +256,28 @@ public class MainActivity extends AppCompatActivity {
             item.button.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (mIDownloadManager != null) {
+                    if (mIDownloadManager == null) {
+                        return;
+                    }
+                    if (isTaskRunning(data.id)) {
+                        finalItem.button.setText("start");
+                        try {
+                            mIDownloadManager.pauseTask(data);
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+
+                    } else {
+                        finalItem.button.setText("pause");
                         try {
                             mIDownloadManager.continueTask(data);
                         } catch (RemoteException e) {
                             e.printStackTrace();
                         }
-                    } else {
-                        if (isTaskRunning(data.id)) {
-                            finalItem.button.setText("start");
-                            if (mIDownloadManager != null) {
-                                try {
-                                    mIDownloadManager.pauseTask(data);
-                                } catch (RemoteException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        } else {
-                            finalItem.button.setText("pause");
-                            if (mIDownloadManager != null) {
-                                try {
-                                    mIDownloadManager.continueTask(data);
-                                } catch (RemoteException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
+
                     }
+
+
                 }
             });
             return item;
