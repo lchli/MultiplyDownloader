@@ -148,7 +148,7 @@ class TinyDownloader {
                 }
                 mTinyDownloadTask.currentFinish = totalFinish.get();
                 //save to db.
-                TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().update(mTinyDownloadTask);
+                TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().update(mTinyDownloadTask);
 
                 long time = System.currentTimeMillis();
                 if (previousTime != -1 && previousFinished != -1) {
@@ -286,7 +286,7 @@ class TinyDownloader {
         infoFile.delete();
         //update db.
         mTinyDownloadTask.state = TinyDownloadConfig.TASK_STATE_FINISHED;
-        TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().update(mTinyDownloadTask);
+        TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().update(mTinyDownloadTask);
         //update state.
         mTinyDownloadManager.onTaskStateChanged(new TinyDownloadManager.TaskStateChangedCallback() {
             @Override

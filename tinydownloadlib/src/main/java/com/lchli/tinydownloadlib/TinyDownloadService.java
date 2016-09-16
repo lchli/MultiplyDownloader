@@ -10,9 +10,6 @@ import android.support.annotation.Nullable;
  * @author lchli
  *         in order to reduce memory occupy,this service run in service process.
  *         so you must bind this service before your call,then you will get a IDownloadManager for use.
- *         at last,you can register broadcast receiver to receive download state,result,etc.
- *         {@link TinyDownloadConfig#getDownloadReceiverFilter()}
- *         {@see TinyDownloadConfig#DownloadBroadCastAction}
  */
 
 public class TinyDownloadService extends Service {

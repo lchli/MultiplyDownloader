@@ -37,7 +37,7 @@ public class TinyDownloadManager {
             });
             return;
         }
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().queryBuilder();
+        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
         builder.where(TinyDownloadTaskDao.Properties.Id.eq(task.id));
         TinyDownloadTask existTask = builder.build().unique();
         if (existTask != null) {
@@ -50,7 +50,7 @@ public class TinyDownloadManager {
             });
             return;
         }
-        TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().insert(task);
+        TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().insert(task);
 
         onTaskStateChanged(new TaskStateChangedCallback() {
             @Override
@@ -89,7 +89,7 @@ public class TinyDownloadManager {
     void deleteTask(final TinyDownloadTask task) {
         pauseTask(task);
         //delete from db.
-        TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().delete(task);
+        TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().delete(task);
 
         onTaskStateChanged(new TaskStateChangedCallback() {
             @Override
@@ -131,25 +131,25 @@ public class TinyDownloadManager {
 
 
     public static List<TinyDownloadTask> queryFinishedTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().queryBuilder();
+        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
         builder.where(TinyDownloadTaskDao.Properties.State.eq(TinyDownloadConfig.TASK_STATE_FINISHED));
         return builder.build().list();
     }
 
     public static List<TinyDownloadTask> queryUnFinishedTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().queryBuilder();
+        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
         builder.where(TinyDownloadTaskDao.Properties.State.eq(TinyDownloadConfig.TASK_STATE_UNFINISHED));
         return builder.build().list();
     }
 
     public static List<TinyDownloadTask> queryAllTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession.getTinyDownloadTaskDao().queryBuilder();
+        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
         return builder.build().list();
     }
 
 
     public static TinyDownloadTaskDao getTaskDao() {
-        return TinyDownloadConfig.daoSession.getTinyDownloadTaskDao();
+        return TinyDownloadConfig.daoSession().getTinyDownloadTaskDao();
     }
 
 }

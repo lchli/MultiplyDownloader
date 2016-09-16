@@ -9,6 +9,8 @@ import com.karumi.dexter.listener.PermissionDeniedResponse;
 import com.karumi.dexter.listener.PermissionGrantedResponse;
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener;
+import com.lchli.tinydownloadlib.DaoMaster;
+import com.lchli.tinydownloadlib.DaoSession;
 import com.lchli.tinydownloadlib.TinyDownloadConfig;
 
 /**
@@ -17,12 +19,17 @@ import com.lchli.tinydownloadlib.TinyDownloadConfig;
 
 public class App extends Application {
 
+    private DaoSession daoSession;
+
     @Override
     public void onCreate() {
         super.onCreate();
         Thread.currentThread().setUncaughtExceptionHandler(new AppExceptionHandler());
         Dexter.initialize(this);
-        TinyDownloadConfig.init(this);
+
+        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, "download-db");
+        daoSession = new DaoMaster(helper.getWritableDb()).newSession();
+        TinyDownloadConfig.init(daoSession);
 
         Dexter.checkPermission(new PermissionListener() {
             @Override
