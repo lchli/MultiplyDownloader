@@ -3,50 +3,46 @@ package com.lchli.tinydownloadlib;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import org.greenrobot.greendao.annotation.Entity;
-import org.greenrobot.greendao.annotation.Generated;
-import org.greenrobot.greendao.annotation.Id;
-import org.greenrobot.greendao.annotation.Keep;
+import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.table.DatabaseTable;
 
 /**
  * @author lchli
  */
-@Entity
+@DatabaseTable(tableName = "TinyDownloadTask")
 public class TinyDownloadTask implements Parcelable {
-    @Id
-    public String id;
+
+    @DatabaseField(generatedId = true)
+    public long id;
+    @DatabaseField
+    public String uid;
+    @DatabaseField
     public String url;
+    @DatabaseField
     public String saveDir;
+    @DatabaseField
     public String name;
+    @DatabaseField
     public long totalLength = 0;
+
     public long currentFinish = 0;//temp.
+
+    @DatabaseField
     public int state = TinyDownloadConfig.TASK_STATE_UNFINISHED;//finish,unfinish.
-    @Keep
+
     public long speed = 0;
 
-    @Generated(hash = 1918710703)
-    public TinyDownloadTask(String id, String url, String saveDir, String name,
-                            long totalLength, long currentFinish, int state, long speed) {
-        this.id = id;
-        this.url = url;
-        this.saveDir = saveDir;
-        this.name = name;
-        this.totalLength = totalLength;
-        this.currentFinish = currentFinish;
-        this.state = state;
-        this.speed = speed;
-    }
+    @DatabaseField
+    public int threadCount;
 
-    @Keep
-    @Generated(hash = 1689830199)
-    public TinyDownloadTask(String id, String url, String saveDir, String name) {
-        this.id = id;
+
+    public TinyDownloadTask(String uid, String url, String saveDir, String name) {
+        this.uid = uid;
         this.url = url;
         this.saveDir = saveDir;
         this.name = name;
     }
 
-    @Generated(hash = 1689830199)
     public TinyDownloadTask() {
     }
 
@@ -57,78 +53,15 @@ public class TinyDownloadTask implements Parcelable {
 
         TinyDownloadTask that = (TinyDownloadTask) o;
 
-        return id.equals(that.id);
+        return uid.equals(that.uid);
 
     }
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return uid.hashCode();
     }
 
-    public int getState() {
-        return this.state;
-    }
-
-    public void setState(int state) {
-        this.state = state;
-    }
-
-    public long getCurrentFinish() {
-        return this.currentFinish;
-    }
-
-    public void setCurrentFinish(long currentFinish) {
-        this.currentFinish = currentFinish;
-    }
-
-    public long getTotalLength() {
-        return this.totalLength;
-    }
-
-    public void setTotalLength(long totalLength) {
-        this.totalLength = totalLength;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getSaveDir() {
-        return this.saveDir;
-    }
-
-    public void setSaveDir(String saveDir) {
-        this.saveDir = saveDir;
-    }
-
-    public String getUrl() {
-        return this.url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getId() {
-        return this.id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public long getSpeed() {
-        return this.speed;
-    }
-
-    public void setSpeed(long speed) {
-        this.speed = speed;
-    }
 
 
     @Override
@@ -138,7 +71,7 @@ public class TinyDownloadTask implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(this.id);
+        dest.writeString(this.uid);
         dest.writeString(this.url);
         dest.writeString(this.saveDir);
         dest.writeString(this.name);
@@ -149,7 +82,7 @@ public class TinyDownloadTask implements Parcelable {
     }
 
     public void readFromParcel(Parcel in) {
-        this.id = in.readString();
+        this.uid = in.readString();
         this.url = in.readString();
         this.saveDir = in.readString();
         this.name = in.readString();
@@ -179,7 +112,7 @@ public class TinyDownloadTask implements Parcelable {
     @Override
     public String toString() {
         return "TinyDownloadTask{" +
-                "id='" + id + '\'' +
+                "uid='" + uid + '\'' +
                 ", url='" + url + '\'' +
                 ", saveDir='" + saveDir + '\'' +
                 ", name='" + name + '\'' +

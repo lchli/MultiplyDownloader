@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (RemoteException e) {
                         e.printStackTrace();
                     }
+
                 }
             }
         });
@@ -145,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             });
+
 
         }
 
@@ -245,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
 
             } else {
                 item.button.setEnabled(true);
-                if (mIDownloadManager != null && isTaskRunning(data.id)) {
+                if (mIDownloadManager != null && isTaskRunning(data.uid)) {
                     item.button.setText("pause");
                 } else {
                     item.button.setText("start");
@@ -259,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
                     if (mIDownloadManager == null) {
                         return;
                     }
-                    if (isTaskRunning(data.id)) {
+                    if (isTaskRunning(data.uid)) {
                         finalItem.button.setText("start");
                         try {
                             mIDownloadManager.pauseTask(data);

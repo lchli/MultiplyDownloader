@@ -5,8 +5,6 @@ import android.os.RemoteException;
 
 import com.apkfuns.logutils.LogUtils;
 
-import org.greenrobot.greendao.query.QueryBuilder;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
@@ -25,86 +23,110 @@ public class TinyDownloadManager {
     TinyDownloadManager() {
     }
 
+    void removeDownloader(String key) {
+        runningDownloaders.remove(key);
+    }
+
+    boolean isIdle() {
+        synchronized (this) {
+            return runningDownloaders.isEmpty();
+        }
+    }
+
+    /**
+     * note:this run in binder-Thread.
+     *
+     * @param task
+     */
     void addTask(final TinyDownloadTask task) {
-        TinyDownloader downloader = runningDownloaders.get(task.id);
-        if (downloader != null) {
-            LogUtils.e("task already downloading task=:" + task);
-            onTaskStateChanged(new TaskStateChangedCallback() {
-                @Override
-                public void run(IDownloadListener listener) throws RemoteException {
-                    listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
-                }
-            });
-            return;
-        }
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
-        builder.where(TinyDownloadTaskDao.Properties.Id.eq(task.id));
-        TinyDownloadTask existTask = builder.build().unique();
-        if (existTask != null) {
-            LogUtils.e("task already exist task=:" + task);
-            onTaskStateChanged(new TaskStateChangedCallback() {
-                @Override
-                public void run(IDownloadListener listener) throws RemoteException {
-                    listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
-                }
-            });
-            return;
-        }
-        TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().insert(task);
-
-        onTaskStateChanged(new TaskStateChangedCallback() {
-            @Override
-            public void run(IDownloadListener listener) throws RemoteException {
-                listener.onTaskAdded(task);
+        synchronized (this) {
+            TinyDownloader downloader = runningDownloaders.get(task.uid);
+            if (downloader != null) {
+                LogUtils.e("task already downloading task=:" + task);
+                onTaskStateChanged(new TaskStateChangedCallback() {
+                    @Override
+                    public void run(IDownloadListener listener) throws RemoteException {
+                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
+                    }
+                });
+                return;
             }
-        });
+            if (TaskTable.isTaskExist(task.uid, TinyDownloadConfig.context())) {
+                LogUtils.e("task already exist task=:" + task);
+                onTaskStateChanged(new TaskStateChangedCallback() {
+                    @Override
+                    public void run(IDownloadListener listener) throws RemoteException {
+                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
+                    }
+                });
+                return;
+            }
+            TaskTable.addTask(task, TinyDownloadConfig.context());
 
-        TinyDownloader newDownloader = new TinyDownloader(this);
-        runningDownloaders.put(task.id, newDownloader);
-        newDownloader.download(task);
+            onTaskStateChanged(new TaskStateChangedCallback() {
+                @Override
+                public void run(IDownloadListener listener) throws RemoteException {
+                    listener.onTaskAdded(task);
+                }
+            });
 
+            TinyDownloader newDownloader = new TinyDownloader(this);
+            runningDownloaders.put(task.uid, newDownloader);
+            newDownloader.download(task);
+        }
 
     }
 
     void continueTask(TinyDownloadTask task) {
-        TinyDownloader downloader = runningDownloaders.get(task.id);
-        if (downloader != null) {
-            LogUtils.e("task already downloading task=:" + task);
-            return;
+        synchronized (this) {
+            TinyDownloader downloader = runningDownloaders.get(task.uid);
+            if (downloader != null) {
+                LogUtils.e("task already downloading task=:" + task);
+                return;
+            }
+            TinyDownloader newDownloader = new TinyDownloader(this);
+            runningDownloaders.put(task.uid, newDownloader);
+            newDownloader.download(task);
         }
-        TinyDownloader newDownloader = new TinyDownloader(this);
-        runningDownloaders.put(task.id, newDownloader);
-        newDownloader.download(task);
     }
 
     void pauseTask(TinyDownloadTask task) {
-        TinyDownloader downloader = runningDownloaders.get(task.id);
-        if (downloader == null) {
-            return;
+        synchronized (this) {
+            TinyDownloader downloader = runningDownloaders.get(task.uid);
+            if (downloader == null) {
+                return;
+            }
+            downloader.cancel();
+            removeDownloader(task.uid);
         }
-        downloader.cancel();
-        runningDownloaders.remove(task.id);
     }
 
     void deleteTask(final TinyDownloadTask task) {
-        pauseTask(task);
-        //delete from db.
-        TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().delete(task);
-
-        onTaskStateChanged(new TaskStateChangedCallback() {
-            @Override
-            public void run(IDownloadListener listener) throws RemoteException {
-                listener.onTaskDeleted(task);
+        synchronized (this) {
+            TinyDownloader downloader = runningDownloaders.get(task.uid);
+            if (downloader != null) {
+                downloader.cancel();
             }
-        });
-        //delete file.
-        File file = new File(task.saveDir, task.name);
-        if (file.exists()) {
-            file.delete();
-        }
-        File infoFile = new File(task.saveDir, task.name + ".info");
-        if (infoFile.exists()) {
-            infoFile.delete();
+            //delete from db.
+            TaskTable.deleteTask(task.uid, TinyDownloadConfig.context());
+
+            onTaskStateChanged(new TaskStateChangedCallback() {
+                @Override
+                public void run(IDownloadListener listener) throws RemoteException {
+                    listener.onTaskDeleted(task);
+                }
+            });
+            //delete file.
+            File file = new File(task.saveDir, task.name);
+            if (file.exists()) {
+                file.delete();
+            }
+            File infoFile = new File(task.saveDir, task.name + ".info");
+            if (infoFile.exists()) {
+                infoFile.delete();
+            }
+
+            removeDownloader(task.uid);
         }
     }
 
@@ -131,25 +153,16 @@ public class TinyDownloadManager {
 
 
     public static List<TinyDownloadTask> queryFinishedTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
-        builder.where(TinyDownloadTaskDao.Properties.State.eq(TinyDownloadConfig.TASK_STATE_FINISHED));
-        return builder.build().list();
+        return TaskTable.queryFinishedTasks(TinyDownloadConfig.context());
     }
 
     public static List<TinyDownloadTask> queryUnFinishedTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
-        builder.where(TinyDownloadTaskDao.Properties.State.eq(TinyDownloadConfig.TASK_STATE_UNFINISHED));
-        return builder.build().list();
+        return TaskTable.queryUnFinishedTasks(TinyDownloadConfig.context());
     }
 
     public static List<TinyDownloadTask> queryAllTasks() {
-        QueryBuilder<TinyDownloadTask> builder = TinyDownloadConfig.daoSession().getTinyDownloadTaskDao().queryBuilder();
-        return builder.build().list();
+        return TaskTable.queryAllTasks(TinyDownloadConfig.context());
     }
 
-
-    public static TinyDownloadTaskDao getTaskDao() {
-        return TinyDownloadConfig.daoSession().getTinyDownloadTaskDao();
-    }
 
 }

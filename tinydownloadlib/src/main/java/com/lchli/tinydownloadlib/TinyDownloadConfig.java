@@ -1,5 +1,7 @@
 package com.lchli.tinydownloadlib;
 
+import android.content.Context;
+
 import com.apkfuns.logutils.LogUtils;
 
 /**
@@ -21,23 +23,21 @@ public final class TinyDownloadConfig {
     static int sDownloadThreadCounts = 3;
     static int sTaskProgressUpdateInterval = 1000;
 
-    private static DaoSession daoSession;
+    private static Context context;
 
-    /**
-     * @param downloadDaoSession dao for save download data.
-     */
-    public static void init(DaoSession downloadDaoSession) {
-        if (daoSession != null) {
+
+     public static void init(Context ctx) {
+        if (context != null) {
             return;
         }
-        daoSession = downloadDaoSession;
+        context = ctx.getApplicationContext();
     }
 
-    public static DaoSession daoSession() {
-        if (daoSession == null) {
+     static Context context() {
+        if (context == null) {
             throw new IllegalStateException("Download lib not init,you must call TinyDownloadConfig#init first!");
         }
-        return daoSession;
+        return context;
     }
 
     public static void setDownloadBufferSize(int sizeInBytes) {
