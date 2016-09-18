@@ -62,7 +62,7 @@ public class TinyDownloadService extends Service {
 
         @Override
         public boolean isTaskDownloading(String taskId) throws RemoteException {
-            return mTinyDownloadManager.runningDownloaders.get(taskId) != null;
+            return mTinyDownloadManager.isTaskRunning(taskId);
         }
 
         @Override

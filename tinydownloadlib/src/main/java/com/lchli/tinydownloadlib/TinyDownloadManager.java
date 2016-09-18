@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class TinyDownloadManager {
 
-    final Map<String, TinyDownloader> runningDownloaders = new HashMap<>();
+    private final Map<String, TinyDownloader> runningDownloaders = new HashMap<>();
     final RemoteCallbackList<IDownloadListener> mDownloadListeners = new RemoteCallbackList<>();
 
     TinyDownloadManager() {
@@ -31,6 +31,10 @@ public class TinyDownloadManager {
         synchronized (this) {
             return runningDownloaders.isEmpty();
         }
+    }
+
+    boolean isTaskRunning(String taskUid) {
+        return runningDownloaders.get(taskUid) != null;
     }
 
     /**

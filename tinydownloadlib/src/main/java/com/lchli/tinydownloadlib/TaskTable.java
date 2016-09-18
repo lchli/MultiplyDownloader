@@ -20,7 +20,7 @@ class TaskTable {
         return OpenHelperManager.getHelper(context, DatabaseHelper.class);
     }
 
-    public static List<TinyDownloadTask> queryAllTasks(Context context) {
+    static List<TinyDownloadTask> queryAllTasks(Context context) {
         final DatabaseHelper helper = getHelper(context);
         List<TinyDownloadTask> uploads = null;
         try {
@@ -40,7 +40,7 @@ class TaskTable {
 
     }
 
-    static void setTaskProgress(TinyDownloadTask task) {
+    private static void setTaskProgress(TinyDownloadTask task) {
         if (task.state == TinyDownloadConfig.TASK_STATE_UNFINISHED) {
             long progress = 0;
             File infoFile = new File(task.saveDir, task.name + ".info");
@@ -63,12 +63,12 @@ class TaskTable {
     }
 
 
-    public static List<TinyDownloadTask> queryFinishedTasks(Context context) {
+    static List<TinyDownloadTask> queryFinishedTasks(Context context) {
         final DatabaseHelper helper = getHelper(context);
         List<TinyDownloadTask> uploads = null;
         try {
             final Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
-            uploads = dao.queryForEq("state", TinyDownloadConfig.TASK_STATE_FINISHED);
+            uploads = dao.queryForEq(TinyDownloadTask.TaskColumnName.state, TinyDownloadConfig.TASK_STATE_FINISHED);
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -78,12 +78,12 @@ class TaskTable {
 
     }
 
-    public static List<TinyDownloadTask> queryUnFinishedTasks(Context context) {
+    static List<TinyDownloadTask> queryUnFinishedTasks(Context context) {
         final DatabaseHelper helper = getHelper(context);
         List<TinyDownloadTask> uploads = null;
         try {
             final Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
-            uploads = dao.queryForEq("state", TinyDownloadConfig.TASK_STATE_UNFINISHED);
+            uploads = dao.queryForEq(TinyDownloadTask.TaskColumnName.state, TinyDownloadConfig.TASK_STATE_UNFINISHED);
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -93,7 +93,7 @@ class TaskTable {
 
     }
 
-    public static void addTask(TinyDownloadTask task, Context context) {
+    static void addTask(TinyDownloadTask task, Context context) {
         final DatabaseHelper helper = getHelper(context);
         try {
             Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
@@ -106,16 +106,16 @@ class TaskTable {
 
     }
 
-    public static void updateTask(TinyDownloadTask task, Context context) {
+    static void updateTask(TinyDownloadTask task, Context context) {
         final DatabaseHelper helper = getHelper(context);
         try {
             Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
             UpdateBuilder<TinyDownloadTask, String> builder = dao.updateBuilder();
-            builder.updateColumnValue("state", task.state);
-            builder.updateColumnValue("totalLength", task.totalLength);
-            builder.updateColumnValue("threadCount", task.threadCount);
+            builder.updateColumnValue(TinyDownloadTask.TaskColumnName.state, task.state);
+            builder.updateColumnValue(TinyDownloadTask.TaskColumnName.totalLength, task.totalLength);
+            builder.updateColumnValue(TinyDownloadTask.TaskColumnName.threadCount, task.threadCount);
 
-            builder.where().eq("uid", task.uid);
+            builder.where().eq(TinyDownloadTask.TaskColumnName.uid, task.uid);
 
             builder.update();
         } catch (SQLException e) {
@@ -126,12 +126,12 @@ class TaskTable {
 
     }
 
-    public static void deleteTask(String taskUid, Context context) {
+    static void deleteTask(String taskUid, Context context) {
         final DatabaseHelper helper = getHelper(context);
         try {
             Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
             DeleteBuilder<TinyDownloadTask, String> builder = dao.deleteBuilder();
-            builder.where().eq("uid", taskUid);
+            builder.where().eq(TinyDownloadTask.TaskColumnName.uid, taskUid);
             builder.delete();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -140,12 +140,12 @@ class TaskTable {
         }
     }
 
-    public static boolean isTaskExist(String taskUid, Context context) {
+    static boolean isTaskExist(String taskUid, Context context) {
         final DatabaseHelper helper = getHelper(context);
         List<TinyDownloadTask> tasks = null;
         try {
             final Dao<TinyDownloadTask, String> dao = helper.getTaskDao();
-            tasks = dao.queryForEq("uid", taskUid);
+            tasks = dao.queryForEq(TinyDownloadTask.TaskColumnName.uid, taskUid);
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {

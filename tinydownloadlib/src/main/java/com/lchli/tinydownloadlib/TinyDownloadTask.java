@@ -12,8 +12,6 @@ import com.j256.ormlite.table.DatabaseTable;
 @DatabaseTable(tableName = "TinyDownloadTask")
 public class TinyDownloadTask implements Parcelable {
 
-    @DatabaseField(generatedId = true)
-    public long id;
     @DatabaseField
     public String uid;
     @DatabaseField
@@ -34,6 +32,17 @@ public class TinyDownloadTask implements Parcelable {
 
     @DatabaseField
     public int threadCount;
+
+    public interface TaskColumnName {
+        String uid = "uid";
+        String url = "url";
+        String saveDir = "saveDir";
+        String name = "name";
+        String totalLength = "totalLength";
+        String state = "state";
+        String threadCount = "threadCount";
+
+    }
 
 
     public TinyDownloadTask(String uid, String url, String saveDir, String name) {
@@ -61,7 +70,6 @@ public class TinyDownloadTask implements Parcelable {
     public int hashCode() {
         return uid.hashCode();
     }
-
 
 
     @Override
