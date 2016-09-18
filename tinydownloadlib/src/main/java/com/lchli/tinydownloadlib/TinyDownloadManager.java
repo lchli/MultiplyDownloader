@@ -41,12 +41,13 @@ public class TinyDownloadManager {
     void addTask(final TinyDownloadTask task) {
         synchronized (this) {
             TinyDownloader downloader = runningDownloaders.get(task.uid);
+            final String errorMsg = "task already exist!";
             if (downloader != null) {
                 LogUtils.e("task already downloading task=:" + task);
                 onTaskStateChanged(new TaskStateChangedCallback() {
                     @Override
                     public void run(IDownloadListener listener) throws RemoteException {
-                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
+                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST, errorMsg);
                     }
                 });
                 return;
@@ -56,7 +57,7 @@ public class TinyDownloadManager {
                 onTaskStateChanged(new TaskStateChangedCallback() {
                     @Override
                     public void run(IDownloadListener listener) throws RemoteException {
-                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST);
+                        listener.onDownloadError(task, TinyDownloadConfig.ERROR_CODE_TASK_EXIST, errorMsg);
                     }
                 });
                 return;
@@ -130,7 +131,7 @@ public class TinyDownloadManager {
         }
     }
 
-    void onTaskStateChanged(TaskStateChangedCallback cb) {
+    synchronized void onTaskStateChanged(TaskStateChangedCallback cb) {
         final int COUNT = mDownloadListeners.beginBroadcast();
         for (int i = 0; i < COUNT; i++) {
             IDownloadListener listener = mDownloadListeners.getBroadcastItem(i);

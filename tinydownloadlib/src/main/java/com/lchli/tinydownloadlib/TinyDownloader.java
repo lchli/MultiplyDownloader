@@ -1,5 +1,6 @@
 package com.lchli.tinydownloadlib;
 
+import android.accounts.NetworkErrorException;
 import android.os.RemoteException;
 import android.os.SystemClock;
 
@@ -28,24 +29,22 @@ import java.util.concurrent.atomic.AtomicLong;
 class TinyDownloader {
 
     private static final int THREAD_COUNT = TinyDownloadConfig.sDownloadThreadCounts;
-    private static final int MAX_RUNNABLE = THREAD_COUNT + 1;
-    private static final int CORE_POOL_SIZE = MAX_RUNNABLE;
-    private static final int MAX_POOL_SIZE = MAX_RUNNABLE;
     private static final long KEEP_ALIVE_TIME = 5;
+    private static final int UPDATE_PROGRESS_INTERVAL_SECOND = TinyDownloadConfig.sTaskProgressUpdateInterval;
+
     private final TinyDownloadManager mTinyDownloadManager;
-    private BlockingQueue<Runnable> workQueue = new LinkedBlockingDeque<>(MAX_RUNNABLE);
-    private ThreadPoolExecutor mDownloadThreadPool = new ThreadPoolExecutor(CORE_POOL_SIZE, MAX_POOL_SIZE, KEEP_ALIVE_TIME, TimeUnit.SECONDS, workQueue);
+    private BlockingQueue<Runnable> workQueue;
+    private ThreadPoolExecutor mDownloadThreadPool;
     private TinyDownloadTask mTinyDownloadTask;
     private File downloadFile;
     private File infoFile;
-    //per thread should download length.
-    private int perThreadLength;
+    private int perThreadLength;//per thread should download length.
     private AtomicLong totalFinish = new AtomicLong(0);
     private AtomicBoolean isUserCancel = new AtomicBoolean(false);
     private AtomicBoolean isException = new AtomicBoolean(false);
-    private static final int UPDATE_PROGRESS_INTERVAL_SECOND = TinyDownloadConfig.sTaskProgressUpdateInterval;
     private long previousFinished = -1;
     private long previousTime = -1;
+    private Exception downloadException;
 
     TinyDownloader(TinyDownloadManager tinyDownloadManager) {
         mTinyDownloadManager = tinyDownloadManager;
@@ -53,7 +52,13 @@ class TinyDownloader {
 
     void download(final TinyDownloadTask task) {
         mTinyDownloadTask = task;
-        mTinyDownloadTask.threadCount=THREAD_COUNT;
+        if (mTinyDownloadTask.threadCount <= 0) {//new task.
+            mTinyDownloadTask.threadCount = THREAD_COUNT;
+        }
+        final int maxRunnable = mTinyDownloadTask.threadCount + 1;
+        workQueue = new LinkedBlockingDeque<>(maxRunnable);
+        mDownloadThreadPool = new ThreadPoolExecutor(maxRunnable, maxRunnable, KEEP_ALIVE_TIME, TimeUnit.SECONDS, workQueue);
+
         mDownloadThreadPool.execute(new UpdateProgressRunnable());
     }
 
@@ -65,6 +70,7 @@ class TinyDownloader {
             if (!dir.exists()) {
                 boolean success = dir.mkdirs();
                 if (!success) {
+                    downloadError(new IllegalStateException("create task save dir fail."));
                     return;
                 }
             }
@@ -74,72 +80,88 @@ class TinyDownloader {
                 url = new URL(mTinyDownloadTask.url);
             } catch (MalformedURLException e) {
                 LogUtils.e(e.getMessage());
-                downloadError();
+                downloadError(e);
                 return;
-
             }
 
             HttpURLConnection conn;
             try {
                 conn = (HttpURLConnection) url.openConnection();
             } catch (IOException e) {
-                downloadError();
+                downloadError(e);
                 LogUtils.e(e.getMessage());
                 return;
 
             }
             conn.setConnectTimeout(TinyDownloadConfig.DOWNLOAD_CONNECT_TIME_OUT);
             final int downloadFileTotalLength = conn.getContentLength();
+            conn.disconnect();
             if (downloadFileTotalLength == -1) {
                 LogUtils.e("cannot get download file contentLength.");
-                downloadError();
+                downloadError(new NetworkErrorException("cannot get download file contentLength."));
                 return;
             }
 
-            mTinyDownloadTask.totalLength = downloadFileTotalLength;
-            TaskTable.updateTask(mTinyDownloadTask, TinyDownloadConfig.context());
-
-            conn.disconnect();
-            perThreadLength = (downloadFileTotalLength + THREAD_COUNT - 1) / THREAD_COUNT;
-            //create download file.
             downloadFile = new File(dir, mTinyDownloadTask.name);
             infoFile = new File(dir, mTinyDownloadTask.name + ".info");
+            if (mTinyDownloadTask.totalLength == 0) {//new task.
+                mTinyDownloadTask.totalLength = downloadFileTotalLength;
+                TaskTable.updateTask(mTinyDownloadTask, TinyDownloadConfig.context());
+            } else {//old task.
+                if (mTinyDownloadTask.totalLength != downloadFileTotalLength) {//remote file changed.
+                    downloadFile.delete();
+                    infoFile.delete();
+                    mTinyDownloadTask.totalLength = downloadFileTotalLength;
+                    TaskTable.updateTask(mTinyDownloadTask, TinyDownloadConfig.context());
+                }
+
+            }
+            perThreadLength = (downloadFileTotalLength + mTinyDownloadTask.threadCount - 1) / mTinyDownloadTask.threadCount;
+
+            //create download file.
             if (!downloadFile.exists()) {
+                RandomAccessFile randomDownloadFile = null;
                 try {
                     infoFile.delete();//if file not exist,should delete its info file.
                     downloadFile.createNewFile();
-                    RandomAccessFile randomDownloadFile = new RandomAccessFile(downloadFile, "rwd");
+                    randomDownloadFile = new RandomAccessFile(downloadFile, "rwd");
                     randomDownloadFile.setLength(downloadFileTotalLength);
                     randomDownloadFile.close();
                 } catch (IOException e) {
                     e.printStackTrace();
-                    downloadError();
+                    downloadFile.delete();
+                    downloadError(e);
                     return;
+                } finally {
+                    closeFile(randomDownloadFile);
                 }
             }
             //create info file.
             if (!infoFile.exists()) {
+                RandomAccessFile randomInfoFile = null;
                 try {
                     infoFile.createNewFile();
-                    RandomAccessFile randomInfoFile = new RandomAccessFile(infoFile, "rwd");
-                    for (int i = 0; i < THREAD_COUNT; i++) {
+                    randomInfoFile = new RandomAccessFile(infoFile, "rwd");
+                    for (int i = 0; i < mTinyDownloadTask.threadCount; i++) {
                         randomInfoFile.writeLong(0);
                     }
-                    randomInfoFile.close();
                 } catch (IOException e) {
                     e.printStackTrace();
-                    downloadError();
+                    infoFile.delete();
+                    downloadError(e);
                     return;
+                } finally {
+                    closeFile(randomInfoFile);
                 }
             }
             //commit download task.
-            for (int i = 0; i < THREAD_COUNT; i++) {
+            for (int i = 0; i < mTinyDownloadTask.threadCount; i++) {
                 mDownloadThreadPool.execute(new DownloadRunnable(i));
             }
             //publish speed and progress.
             while (true) {
                 if (isException.get()) {
-                    downloadError();
+                    downloadError(downloadException);
                     break;
                 }
                 if (isUserCancel.get()) {
@@ -227,6 +249,7 @@ class TinyDownloader {
                 closeStream(inputStream);
 
             } catch (Exception e) {
+                downloadException = e;
                 isException.set(true);//if someone thread happen error,we should close all thread.
                 e.printStackTrace();
                 closeFile(randomFile);
@@ -279,13 +302,13 @@ class TinyDownloader {
     }
 
 
-    private void downloadError() {
+    private void downloadError(final Exception e) {
         synchronized (mTinyDownloadManager) {
             mDownloadThreadPool.shutdown();
             mTinyDownloadManager.onTaskStateChanged(new TinyDownloadManager.TaskStateChangedCallback() {
                 @Override
                 public void run(IDownloadListener listener) throws RemoteException {
-                    listener.onDownloadError(mTinyDownloadTask, TinyDownloadConfig.ERROR_CODE_TASK_EXCEPTION);
+                    listener.onDownloadError(mTinyDownloadTask, TinyDownloadConfig.ERROR_CODE_TASK_EXCEPTION, e.getLocalizedMessage());
                 }
             });
 

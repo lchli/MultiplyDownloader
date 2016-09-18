@@ -14,7 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -118,8 +117,10 @@ public class MainActivity extends AppCompatActivity {
                         mTestAdapter.datas.get(index).speed = task.speed;
                         mTestAdapter.notifyDataSetChanged();
                     }
+
                 }
             });
+
 
         }
 
@@ -151,11 +152,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onDownloadError(TinyDownloadTask task, int errorCode) throws RemoteException {
+        public void onDownloadError(TinyDownloadTask task, int errorCode, final String errorMsg) throws RemoteException {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(getApplicationContext(), "download error!", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), errorMsg, Toast.LENGTH_LONG).show();
                     mTestAdapter.notifyDataSetChanged();
                 }
             });
@@ -229,40 +230,44 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            VH item = (VH) convertView;
-            if (item == null) {
-                item = new VH(getApplicationContext());
+            View itemview = convertView;
+            if (itemview == null) {
+                itemview = View.inflate(getApplicationContext(), R.layout.list_item, null);
+                VH vh = new VH(itemview);
+                itemview.setTag(vh);
             }
+            VH vh = (VH) itemview.getTag();
+
             final TinyDownloadTask data = (TinyDownloadTask) getItem(position);
-            item.tvTaskName.setText(data.name);
-            item.tvTaskUrl.setText(data.url);
-            item.tvCurrentFinish.setText(data.currentFinish + "/" + data.totalLength + "(" + convertFileSize(data.speed) + "/s)");
+            vh.tvTaskName.setText(data.name);
+            vh.tvTaskUrl.setText(data.url);
+            vh.tvCurrentFinish.setText(data.currentFinish + "/" + data.totalLength + "(" + convertFileSize(data.speed) + "/s)");
             float progress = (float) data.currentFinish / data.totalLength * 100;
-            item.progressBar.setMax(100);
-            item.progressBar.setProgress((int) progress);
+            vh.progressBar.setMax(100);
+            vh.progressBar.setProgress((int) progress);
 
             if (data.state == TinyDownloadConfig.TASK_STATE_FINISHED) {
-                item.button.setText("finished");
-                item.button.setEnabled(false);
+                vh.button.setText("finished");
+                vh.button.setEnabled(false);
 
             } else {
-                item.button.setEnabled(true);
+                vh.button.setEnabled(true);
                 if (mIDownloadManager != null && isTaskRunning(data.uid)) {
-                    item.button.setText("pause");
+                    vh.button.setText("pause");
                 } else {
-                    item.button.setText("start");
+                    vh.button.setText("start");
                 }
 
             }
-            final VH finalItem = item;
-            item.button.setOnClickListener(new View.OnClickListener() {
+            final VH finalvh = vh;
+            vh.button.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (mIDownloadManager == null) {
                         return;
                     }
                     if (isTaskRunning(data.uid)) {
-                        finalItem.button.setText("start");
+                        finalvh.button.setText("start");
                         try {
                             mIDownloadManager.pauseTask(data);
                         } catch (RemoteException e) {
@@ -270,7 +275,7 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                     } else {
-                        finalItem.button.setText("pause");
+                        finalvh.button.setText("pause");
                         try {
                             mIDownloadManager.continueTask(data);
                         } catch (RemoteException e) {
@@ -282,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             });
-            return item;
+            return itemview;
         }
 
         private boolean isTaskRunning(String id) {
@@ -294,7 +299,8 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
-        class VH extends FrameLayout {
+
+        class VH {
 
             private final TextView tvTaskName;
             private final TextView tvTaskUrl;
@@ -302,15 +308,16 @@ public class MainActivity extends AppCompatActivity {
             private final Button button;
             private final TextView tvCurrentFinish;
 
-            public VH(Context context) {
-                super(context);
-                View.inflate(context, R.layout.list_item, this);
-                tvTaskName = (TextView) findViewById(R.id.tvTaskName);
-                tvTaskUrl = (TextView) findViewById(R.id.tvTaskUrl);
-                tvCurrentFinish = (TextView) findViewById(R.id.tvCurrentFinish);
-                progressBar = (ProgressBar) findViewById(R.id.progressBar);
-                button = (Button) findViewById(R.id.button);
+
+            public VH(View item) {
+
+                tvTaskName = (TextView) item.findViewById(R.id.tvTaskName);
+                tvTaskUrl = (TextView) item.findViewById(R.id.tvTaskUrl);
+                tvCurrentFinish = (TextView) item.findViewById(R.id.tvCurrentFinish);
+                progressBar = (ProgressBar) item.findViewById(R.id.progressBar);
+                button = (Button) item.findViewById(R.id.button);
             }
         }
     }
+
 }

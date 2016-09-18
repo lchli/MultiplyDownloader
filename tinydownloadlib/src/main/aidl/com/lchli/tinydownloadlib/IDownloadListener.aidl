@@ -9,6 +9,6 @@ interface IDownloadListener {
             void onTaskAdded(inout TinyDownloadTask task);
             void onTaskDeleted(inout TinyDownloadTask task);
             void onDownloadSuccess(inout TinyDownloadTask task);
-            void onDownloadError(inout TinyDownloadTask task, int errorCode);
+            void onDownloadError(inout TinyDownloadTask task, int errorCode,String errorMsg);
 
 }
