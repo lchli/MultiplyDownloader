@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -66,25 +67,49 @@ public class TinyDownloadService extends Service {
         }
 
         @Override
-        public void addTask(TinyDownloadTask task) throws RemoteException {
-            mTinyDownloadManager.addTask(task);
+        public void addTask(final TinyDownloadTask task) throws RemoteException {
             beginForeground();
+
+            asyncRunInQueue(new Runnable() {
+                @Override
+                public void run() {
+                    mTinyDownloadManager.addTask(task);
+                }
+            });
+
         }
 
         @Override
-        public void continueTask(TinyDownloadTask task) throws RemoteException {
-            mTinyDownloadManager.continueTask(task);
+        public void continueTask(final TinyDownloadTask task) throws RemoteException {
             beginForeground();
+
+            asyncRunInQueue(new Runnable() {
+                @Override
+                public void run() {
+                    mTinyDownloadManager.continueTask(task);
+
+                }
+            });
         }
 
         @Override
-        public void pauseTask(TinyDownloadTask task) throws RemoteException {
-            mTinyDownloadManager.pauseTask(task);
+        public void pauseTask(final TinyDownloadTask task) throws RemoteException {
+            asyncRunInQueue(new Runnable() {
+                @Override
+                public void run() {
+                    mTinyDownloadManager.pauseTask(task);
+                }
+            });
         }
 
         @Override
-        public void deleteTask(TinyDownloadTask task) throws RemoteException {
-            mTinyDownloadManager.deleteTask(task);
+        public void deleteTask(final TinyDownloadTask task) throws RemoteException {
+            asyncRunInQueue(new Runnable() {
+                @Override
+                public void run() {
+                    mTinyDownloadManager.deleteTask(task);
+                }
+            });
         }
 
         @Override
@@ -98,6 +123,16 @@ public class TinyDownloadService extends Service {
         }
 
 
+    }
+
+    private void asyncRunInQueue(final Runnable r) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                r.run();
+                return null;
+            }
+        }.execute();
     }
 
     @Override

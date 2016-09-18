@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
 
         loadTasks();
 
+
     }
 
     static String convertFileSize(long size) {
@@ -121,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-
         }
 
         @Override
@@ -147,8 +147,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             });
-
-
         }
 
         @Override
@@ -301,16 +299,13 @@ public class MainActivity extends AppCompatActivity {
 
 
         class VH {
-
             private final TextView tvTaskName;
             private final TextView tvTaskUrl;
             private final ProgressBar progressBar;
             private final Button button;
             private final TextView tvCurrentFinish;
 
-
             public VH(View item) {
-
                 tvTaskName = (TextView) item.findViewById(R.id.tvTaskName);
                 tvTaskUrl = (TextView) item.findViewById(R.id.tvTaskUrl);
                 tvCurrentFinish = (TextView) item.findViewById(R.id.tvCurrentFinish);
